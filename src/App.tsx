@@ -1,10 +1,44 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect , useRef} from "react";
+import { cn } from "@/lib/utils";
 import { Trash2, Plus, Clipboard, ClipboardCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Textarea, TextareaProps } from "@/components/ui/textarea";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+
+
+const AutoResizeTextarea = ({
+  value,
+  onChange,
+  placeholder,
+  className = "",
+  ...props
+}: TextareaProps) => {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      // Reset textarea height to auto to correctly calculate the scrollHeight
+      textareaRef.current.style.height = "auto";
+      // Set the height to scrollHeight to adjust the height based on content
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, [value]);
+
+  return (
+    <Textarea
+      {...props}
+      ref={textareaRef}
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      className={cn("w-full overflow-hidden resize-none", className)}
+      rows={1}
+    />
+  );
+};
+
 
 const App = () => {
   interface Scenario {
@@ -21,12 +55,16 @@ const App = () => {
     }
     return {
       "Add one simple scenario": {
-        input: "Example input from user/document/response",
+        input: "Example input from user/document/response.\nStart with simple examples. Then add combination of nuances, edge cases, and errors.",
         output: {
           json_key_1: "Example output for this key from LLM",
           another_key: "Now delete these scenarios and start adding your own!",
         },
       },
+      "Scenario/example 2": {
+        input: "Diversity of inputs/scenarios is more important than quantity.",
+        output: {}
+      }
     };
   }
 
@@ -167,10 +205,10 @@ const App = () => {
         <div className="flex justify-between w-full">
           <h1 className="text-2xl font-bold">JSON Outputs Dataset</h1>
           <div className="flex space-x-2">
-            <Button onClick={copyToClipboard}>
+            <Button onClick={copyToClipboard} variant={"outline"} className="border-2 border-slate-400" >
               <Clipboard className="mr-2 h-4 w-4" /> Copy to Clipboard
             </Button>
-            <Button onClick={pasteFromClipboard}>
+            <Button onClick={pasteFromClipboard} variant={"outline"} className="border-2 border-slate-400">
               <ClipboardCheck className="mr-2 h-4 w-4" /> Paste from Clipboard
             </Button>
           </div>
@@ -195,8 +233,8 @@ const App = () => {
             className="mr-2 max-w-96"
             id="scenarioName"
           />
-          <Button onClick={handleAddScenario}>
-            <Plus className="mr-1.5 h-4 w-4" /> Add Scenario
+          <Button onClick={handleAddScenario} variant={"secondary"}>
+            <Plus className="mr-2.5 h-4 w-4" /> Add Scenario
           </Button>
         </div>
         {Object.entries(data).map(([scenarioName, scenario]) => (
@@ -205,36 +243,37 @@ const App = () => {
               <CardTitle className="flex justify-between scenarios-center">
                 <span>{scenarioName}</span>
                 <Button
-                  variant="destructive"
+                  variant={"secondary"}
                   size="sm"
+                  className="h-4 rounded-sm p-1 text-xs"
                   onClick={() => handleDeleteScenario(scenarioName)}
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-3 w-2 text-red-700" />
                 </Button>
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="mb-4">
-                <label className="block mb-2 font-semibold">User:</label>
-                <Textarea
+                <label className="block mb-2 font-medium">User:</label>
+                <AutoResizeTextarea
                   value={scenario.input}
                   onChange={(e) =>
                     handleInputChange(scenarioName, e.target.value)
                   }
-                  rows={4}
+                  rows={3}
                 />
               </div>
-              <div>
-                <label className="block mb-2 font-semibold">Assistant:</label>
+              <div >
+                <label className="block mb-2 font-medium">Assistant:</label>
                 {Object.entries(scenario.output).map(([key, value]) => (
                   <div key={key} className="mb-2">
-                    <label className="block text-md">{key}:</label>
-                    <Textarea
+                    <label className="block text-md mb-1 ml-2 font-mono">{key}:</label>
+                    <AutoResizeTextarea
                       value={value}
                       onChange={(e) =>
                         handleOutputChange(scenarioName, key, e.target.value)
                       }
-                      rows={3}
+                      rows={2}
                     />
                   </div>
                 ))}
@@ -244,9 +283,9 @@ const App = () => {
                     value={newKeyName}
                     onChange={(e) => setNewKeyName(e.target.value)}
                     placeholder="New output key name"
-                    className="mr-2"
+                    className="mr-2 max-w-48 font-mono"
                   />
-                  <Button onClick={() => handleAddOutputKey(scenarioName)}>
+                  <Button onClick={() => handleAddOutputKey(scenarioName)} variant={"outline"} className="border-slate-300">
                     <Plus className="mr-2 h-4 w-4" /> Add Key
                   </Button>
                 </div>
@@ -254,6 +293,19 @@ const App = () => {
             </CardContent>
           </Card>
         ))}
+        <div className="flex mb-4">
+          <Input
+            type="text"
+            value={currentScenario}
+            onChange={(e) => setCurrentScenario(e.target.value)}
+            placeholder="Enter new scenario name"
+            className="mr-2 max-w-96"
+            id="scenarioName"
+          />
+          <Button onClick={handleAddScenario} variant={"secondary"}>
+            <Plus className="mr-2.5 h-4 w-4" /> Add Scenario
+          </Button>
+        </div>
         <p className="text-sm mb-2">
           - Data will always be saved in your browser's local storage, so go ahead and refresh or close this tab. You can also copy and
           paste the data to/from clipboard.<br />
